@@ -81,7 +81,7 @@ fn workerThread() void {
 
 ## Configuration
 
-Configuration options for NanoZlog.
+Configuration options for nanozlog.
 
 Includes the following fields:
 
