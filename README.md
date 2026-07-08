@@ -17,10 +17,11 @@ This project is focusing on blazing-fast frontend logging speed (nanoseconds per
 ```zig
 const nanozlog = @import("nanozlog");
 
-var w_buffer: [4096]u8 = undefined;
-var stdout_writer = std.Io.File.stdout().writer(io, &w_buffer);
+var stdout_buffer: [1024]u8 = undefined;
+var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
+const stdout_writer = &stdout_file_writer.interface;
 
-try nanozlog.initNanoZlog(io, allocator, &stdout_writer.interface, .{});
+try nanozlog.initNanoZlog(io, allocator, stdout_writer, .{});
 defer nanozlog.deinitNanoZlog(allocator);
 
 const n: usize = 100;
