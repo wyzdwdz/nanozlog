@@ -158,7 +158,7 @@ pub const NanoZlog = struct {
     pub fn start(self: *Self) !void {
         try self.initDummyBgLogInfos();
         self._is_polling.store(true, .release);
-        self._polling_worker = self._io.async(Self.pollingWorker, .{self});
+        self._polling_worker = try self._io.concurrent(Self.pollingWorker, .{self});
     }
 
     pub fn rdtsc(self: Self) i64 {
