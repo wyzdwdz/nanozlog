@@ -325,3 +325,26 @@ test "min level" {
     const actual_log_count = std.mem.count(u8, written_logs, "Test log");
     try testing.expectEqual(2, actual_log_count);
 }
+
+test "dynamic string" {
+    var buffer: [4096]u8 = undefined;
+    var fixed = std.Io.Writer.fixed(&buffer);
+
+    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+
+    var buf: [1024]u8 = undefined;
+    const str = try std.fmt.bufPrint(&buf, "Dynamic String", .{});
+    const n = 5;
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        info(@src(), "benchmark test log {s}", .{str});
+    }
+    deinitNanoZlog(testing.allocator);
+
+    const written_logs = buffer[0..fixed.end];
+    try std.testing.expect(
+        std.mem.indexOf(u8, written_logs, "benchmark test log Dynamic String") != null,
+    );
+    const count = std.mem.count(u8, written_logs, "benchmark test log Dynamic String");
+    try std.testing.expectEqual(@as(usize, 5), count);
+}
