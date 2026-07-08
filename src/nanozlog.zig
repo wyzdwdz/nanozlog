@@ -48,7 +48,8 @@ pub const NanoZlog = struct {
     _bg_thread_buffers: std.ArrayList(HeapNode) = .empty,
     _buffer_mutex: std.Io.Mutex = .init,
 
-    _polling_worker: std.Thread = undefined,
+    _polling_worker: ?std.Io.Future(@typeInfo(@TypeOf(pollingWorker))
+        .@"fn".return_type.?) = null,
     _is_polling: std.atomic.Value(bool) = .init(false),
 
     _tscns: TscNs,
@@ -131,7 +132,7 @@ pub const NanoZlog = struct {
         self._timezone.deinit();
 
         self._is_polling.store(false, .release);
-        self._polling_worker.join();
+        _ = self._polling_worker.?.await(self._io) catch unreachable;
         self._writer.flush() catch {};
 
         for (self._thread_buffers.items) |buffer| {
@@ -157,7 +158,7 @@ pub const NanoZlog = struct {
     pub fn start(self: *Self) !void {
         try self.initDummyBgLogInfos();
         self._is_polling.store(true, .release);
-        self._polling_worker = try std.Thread.spawn(.{}, Self.pollingWorker, .{self});
+        self._polling_worker = self._io.async(Self.pollingWorker, .{self});
     }
 
     pub fn rdtsc(self: Self) i64 {
