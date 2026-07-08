@@ -58,7 +58,7 @@ pub const SpscVarQueue = struct {
 
                 if (blk_sz >= self._free_write_cnt and read_idx_cache != 0) {
                     self._blk[0].size.store(0, .monotonic);
-                    self._blk[self._write_idx].size.store(1, .monotonic);
+                    self._blk[self._write_idx].size.store(1, .release);
                     self._write_idx = 0;
                     self._free_write_cnt = read_idx_cache;
                 }
@@ -80,7 +80,7 @@ pub const SpscVarQueue = struct {
     }
 
     pub fn front(self: *Self) ?*MsgHeader {
-        var size = self._blk[self._read_idx.load(.monotonic)].size.load(.monotonic);
+        var size = self._blk[self._read_idx.load(.monotonic)].size.load(.acquire);
         if (size == 1) {
             self._read_idx.store(0, .monotonic);
             size = self._blk[0].size.load(.monotonic);
