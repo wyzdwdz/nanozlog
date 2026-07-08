@@ -1,0 +1,11 @@
+.zig-cache/
+zig-out/
+zig-pkg/
+/release/
+/debug/
+/build/
+/build-*/
+/docgen_tmp/
+log.txt
+compile_commands.json
+.cache/

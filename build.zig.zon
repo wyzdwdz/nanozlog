@@ -1,0 +1,18 @@
+.{
+    .name = .nanozlog,
+    .version = "0.1.0",
+    .dependencies = .{
+        .zeit = .{
+            .url = "git+https://github.com/rockorager/zeit?ref=v0.9.0#b1c1c2fcbc71fd7799a316bbcf0ff88d06d80ccc",
+            .hash = "zeit-0.9.0-5I6bk2m9AgBSMH8-L6rYJkwuQAyhXplnfxnvTSGzVHUR",
+        },
+    },
+    .minimum_zig_version = "0.16.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        ".gitignore",
+        "src",
+    },
+    .fingerprint = 0xd0e255281f5d4be5,
+}
