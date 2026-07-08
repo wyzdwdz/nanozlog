@@ -11,8 +11,9 @@
     .paths = .{
         "build.zig",
         "build.zig.zon",
-        ".gitignore",
         "src",
+        "LICENSE.txt",
+        "README.md",
     },
     .fingerprint = 0xd0e255281f5d4be5,
 }
