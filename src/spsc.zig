@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const cache_line = std.atomic.cache_line;
-const page_size = std.heap.pageSize();
 
 pub const SpscVarQueue = struct {
     const Self = @This();
@@ -47,7 +46,7 @@ pub const SpscVarQueue = struct {
             blk_cnt,
         );
 
-        const step = page_size / @sizeOf(MsgHeader);
+        const step = std.heap.pageSize() / @sizeOf(MsgHeader);
         var i: usize = 0;
         while (i < blk_cnt) : (i += step) {
             blk[i].size.store(0, .monotonic);
