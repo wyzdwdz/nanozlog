@@ -132,7 +132,9 @@ pub const NanoZlog = struct {
         self._timezone.deinit();
 
         self._is_polling.store(false, .release);
-        _ = self._polling_worker.?.await(self._io) catch unreachable;
+        if (self._polling_worker) |*worker| {
+            _ = worker.await(self._io) catch unreachable;
+        }
         self._writer.flush() catch {};
 
         for (self._thread_buffers.items) |buffer| {
