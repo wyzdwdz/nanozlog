@@ -31,7 +31,7 @@ while (i < n) : (i += 1) {
 }
 ```
 
-### Queue Full Callback (`setLogQFullCB`)
+### Queue Full Callback (`log_q_full_cb`, `log_q_full_cb_args`)
 
 You can define a callback to execute custom logic when the logging queue is full (e.g., dropping logs, alerting, etc.).
 
@@ -45,7 +45,7 @@ fn onQueueFull(args: *anyopaque) void {
 try initNanoZlog(io, allocator, writer, .{ .log_q_full_cb = onQueueFull, .log_q_full_cb_args = undefined });
 ```
 
-### Custom Print Meta Callback (`setPrintMetaCB`)
+### Custom Print Meta Callback (`print_meta_cb`)
 
 You can completely customize how the log metadata (timestamp, log level, thread ID, file name, etc.) is formatted by setting a custom callback.
 
