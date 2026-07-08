@@ -81,17 +81,19 @@ fn workerThread() void {
 
 ## Configuration
 
-You can configure the size of the background SPSC queue using the Zig build system. By default, the queue size is set to 1MB (`1 << 20` bytes).
+Configuration options for NanoZlog.
 
-To change the queue size when building your project or running benchmarks, in your `build.zig` (if depending on `nanozlog` as a module), you can pass this option down:
+Includes the following fields:
 
-```zig
-const nanozlog_dep = b.dependency("nanozlog", .{
-    .target = target,
-    .optimize = optimize,
-    .queue_size = @as(u32, 2097152),
-});
-```
+- `min_level`: Minimum log level to record (defaults to `.debug` in Debug mode, else `.info`).
+- `queue_size`: The size of the background SPSC queue (defaults to 1MB `1 << 20` bytes).
+- `flush_delay`: Nanoseconds to wait before auto-flushing the log buffer (defaults to 3,000,000,000 ns).
+- `polling_interval`: Nanoseconds between polling intervals for the background thread (defaults to 1,000,000,000 ns).
+- `is_localtime`: Whether to format timestamps in local time instead of UTC (defaults to `false`).
+- `is_block`: Whether a logging call should block when the log queue is full (defaults to `false`).
+- `log_q_full_cb`: A custom callback function to be invoked when the log queue is full (defaults to empty function).
+- `log_q_full_cb_args`: An anyopaque pointer used as log_q_full_cb callback function args (defaults to undefined).
+- `print_meta_cb`: A custom callback function to format and print log metadata. (defaults to builtin function).
 
 ## Limitations
 

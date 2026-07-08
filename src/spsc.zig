@@ -1,8 +1,7 @@
 const std = @import("std");
 
-const config = @import("config");
-
 const cache_line = std.atomic.cache_line;
+const page_size = std.heap.pageSize();
 
 pub const SpscVarQueue = struct {
     const Self = @This();
@@ -30,19 +29,41 @@ pub const SpscVarQueue = struct {
         }
     };
 
-    const blk_cnt: u32 = config.queue_size / @sizeOf(MsgHeader);
+    _allocator: std.mem.Allocator,
 
-    _blk: [blk_cnt]MsgHeader align(cache_line) = undefined,
+    _blk: []align(cache_line) MsgHeader,
+
+    _blk_cnt: u32,
     _write_idx: u32 = 0,
-    _free_write_cnt: u32 = blk_cnt,
+    _free_write_cnt: u32,
 
     _read_idx: std.atomic.Value(u32) align(cache_line) = .init(0),
 
-    pub fn init() Self {
-        return .{};
+    pub fn init(allocator: std.mem.Allocator, queue_size: u32) !Self {
+        const blk_cnt = queue_size / @sizeOf(MsgHeader);
+        const blk = try allocator.alignedAlloc(
+            MsgHeader,
+            std.mem.Alignment.fromByteUnits(cache_line),
+            blk_cnt,
+        );
+
+        const step = page_size / @sizeOf(MsgHeader);
+        var i: usize = 0;
+        while (i < blk_cnt) : (i += step) {
+            blk[i].size.store(0, .monotonic);
+        }
+
+        return .{
+            ._allocator = allocator,
+            ._blk = blk,
+            ._blk_cnt = blk_cnt,
+            ._free_write_cnt = blk_cnt,
+        };
     }
 
-    pub fn deinit() void {}
+    pub fn deinit(self: Self) void {
+        self._allocator.free(self._blk);
+    }
 
     pub fn alloc(self: *Self, size: u32) ?*MsgHeader {
         var asize = size;
@@ -54,7 +75,7 @@ pub const SpscVarQueue = struct {
             const read_idx_cache = self._read_idx.load(.acquire);
 
             if (read_idx_cache <= self._write_idx) {
-                self._free_write_cnt = blk_cnt - self._write_idx;
+                self._free_write_cnt = self._blk_cnt - self._write_idx;
 
                 if (blk_sz >= self._free_write_cnt and read_idx_cache != 0) {
                     self._blk[0].size.store(0, .monotonic);

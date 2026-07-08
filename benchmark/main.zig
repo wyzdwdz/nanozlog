@@ -15,6 +15,7 @@ pub fn main(init: std.process.Init) !void {
     var has_drop: bool = false;
 
     try nanozlog.initNanoZlog(io, allocator, writer, .{
+        .queue_size = 1 << 24,
         .log_q_full_cb = handleFull,
         .log_q_full_cb_args = @ptrCast(&has_drop),
     });

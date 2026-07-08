@@ -72,12 +72,19 @@ pub const NanoZlog = struct {
     };
 
     const ThreadBuffer = struct {
-        varq: SpscVarQueue = .init(),
+        varq: SpscVarQueue,
         should_deinit: std.atomic.Value(bool) = .init(false),
         thread_id: std.Thread.Id,
 
-        pub fn init() ThreadBuffer {
-            return .{ .thread_id = std.Thread.getCurrentId() };
+        pub fn init(allocator: std.mem.Allocator, queue_size: u32) !ThreadBuffer {
+            return .{
+                .varq = try .init(allocator, queue_size),
+                .thread_id = std.Thread.getCurrentId(),
+            };
+        }
+
+        pub fn deinit(self: ThreadBuffer) void {
+            self.varq.deinit();
         }
     };
 
@@ -98,6 +105,7 @@ pub const NanoZlog = struct {
 
     pub const Config = struct {
         min_level: Level = if (builtin.mode == .Debug) .debug else .info,
+        queue_size: u32 = 1 << 20,
         flush_delay: i64 = 3_000_000_000,
         polling_interval: i64 = 1_000_000_000,
         is_localtime: bool = false,
@@ -138,9 +146,11 @@ pub const NanoZlog = struct {
         self._writer.flush() catch {};
 
         for (self._thread_buffers.items) |buffer| {
+            buffer.deinit();
             self._allocator.destroy(buffer);
         }
         for (self._bg_thread_buffers.items) |buffer| {
+            buffer.tb.deinit();
             self._allocator.destroy(buffer.tb);
         }
 
@@ -239,7 +249,7 @@ pub const NanoZlog = struct {
             return;
         } else {
             const ptr_thread_buffer = try self._allocator.create(ThreadBuffer);
-            ptr_thread_buffer.* = ThreadBuffer.init();
+            ptr_thread_buffer.* = try ThreadBuffer.init(self._allocator, self._config.queue_size);
             thread_buffer = ptr_thread_buffer;
 
             try self._buffer_mutex.lock(self._io);
