@@ -9,6 +9,7 @@ This project is focusing on blazing-fast frontend logging speed (nanoseconds per
 - **Ultra-Low Latency & Lock-Free**: The frontend pushes raw log data into a background queue without acquiring any locks, getting out of the hot path in mere nanoseconds.
 - **Zero Hidden Allocations**: Absolutely no surprise memory allocations on the critical path.
 - **Interval Logging**: Built-in support for throttling spammy logs (`infoi`, `warni`, etc. to log at most once per `N` nanoseconds).
+- **One-time Logging**: Built-in support for preventing redundant logs (`infoz`, `warnz`, etc. to log a message exactly once).
 - **Customizable Metadata Logging**: Define your own metadata printing logic to format timestamps, log levels, file names, and thread IDs exactly how you want.
 - **Queue-Full Callback**: Easily hook into queue-full events. You can gracefully handle buffer overflows by choosing to drop logs, trigger alerts, or execute custom logic when the asynchronous log queue hits its limit.
 
@@ -29,6 +30,7 @@ var i: usize = 0;
 while (i < n) : (i += 1) {
     nanozlog.err(@src(), "Test log {d}", .{i}); // basic logging, @src() is required for optimization
     nanozlog.infoi(1000, @src(), "Test log {d}", .{i}); // time interval logging，avoid log flooding and excessive I/O usage
+    nanozlog.warnz(@src(), "Test log {d}", .{i}); // One-time logging, log a message exactly once
 }
 ```
 
