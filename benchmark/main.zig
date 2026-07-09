@@ -24,13 +24,13 @@ pub fn main(init: std.process.Init) !void {
     nanozlog.info(@src(), "Benchmark started Warm-Up", .{});
 
     {
-        const start = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
         const n: usize = 100_000;
         var i: usize = 0;
         while (i < n) : (i += 1) {
             nanozlog.info(@src(), "benchmark test log {s}", .{"Static String"});
         }
-        const end = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const end = std.Io.Timestamp.now(io, .awake).toNanoseconds();
 
         const elapsed = @as(f64, @floatFromInt(end - start)) / 1000.0;
         std.debug.print("Static String:\n" ++
@@ -45,7 +45,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     {
-        const start = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
         const n: usize = 100_000;
         var i: i32 = 0;
 
@@ -55,7 +55,7 @@ pub fn main(init: std.process.Init) !void {
         while (i < n) : (i += 1) {
             nanozlog.info(@src(), "benchmark test log {s}", .{str});
         }
-        const end = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const end = std.Io.Timestamp.now(io, .awake).toNanoseconds();
 
         const elapsed = @as(f64, @floatFromInt(end - start)) / 1000.0;
         std.debug.print("Dynamic String:\n" ++
@@ -70,13 +70,13 @@ pub fn main(init: std.process.Init) !void {
     }
 
     {
-        const start = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
         const n: usize = 100_000;
         var i: i32 = 0;
         while (i < n) : (i += 1) {
             nanozlog.info(@src(), "benchmark test log {d}", .{i});
         }
-        const end = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const end = std.Io.Timestamp.now(io, .awake).toNanoseconds();
 
         const elapsed = @as(f64, @floatFromInt(end - start)) / 1000.0;
         std.debug.print("Single Integer:\n" ++
@@ -91,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     {
-        const start = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
         const n: usize = 100_000;
         var i: i32 = 0;
         var a: i32 = 5;
@@ -99,7 +99,7 @@ pub fn main(init: std.process.Init) !void {
             nanozlog.info(@src(), "benchmark test log {d} {d}", .{ i, a });
             a += 5;
         }
-        const end = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const end = std.Io.Timestamp.now(io, .awake).toNanoseconds();
 
         const elapsed = @as(f64, @floatFromInt(end - start)) / 1000.0;
         std.debug.print("Two Integers:\n" ++
@@ -114,7 +114,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     {
-        const start = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
         const n: usize = 100_000;
         var i: i32 = 0;
         var a: f64 = 5.0;
@@ -122,7 +122,7 @@ pub fn main(init: std.process.Init) !void {
             nanozlog.info(@src(), "benchmark test log {d}", .{a});
             a += 5.0;
         }
-        const end = std.Io.Timestamp.now(io, .real).toNanoseconds();
+        const end = std.Io.Timestamp.now(io, .awake).toNanoseconds();
 
         const elapsed = @as(f64, @floatFromInt(end - start)) / 1000.0;
         std.debug.print("Single Double:\n" ++
