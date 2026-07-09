@@ -84,6 +84,7 @@ fn LogId(comptime src: std.builtin.SourceLocation) type {
         const _src = src;
         var log_id: u32 = 0;
         var limit_ns: i64 = 0;
+        var log_once: bool = false;
     };
 }
 
@@ -144,6 +145,36 @@ test "logi" {
     try testing.expectEqual(1, actual_log_count);
 }
 
+fn logz(
+    comptime message_level: Level,
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    const S = LogId(src);
+
+    if (ptr_log) |logger| {
+        if (S.log_once == true) return;
+        S.log_once = true;
+        const tsc = logger.rdtsc();
+        logger.log(tsc, &S.log_id, src, message_level, format, args) catch {};
+    }
+}
+
+test "logz" {
+    var buffer: [51200]u8 = undefined;
+    var fixed = std.Io.Writer.fixed(&buffer);
+    const a = 10;
+    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    for (0..100) |_| {
+        logz(.debug, @src(), "Test log {d}", .{a});
+    }
+    deinitNanoZlog(testing.allocator);
+    const written_logs = buffer[0..fixed.end];
+    const actual_log_count = std.mem.count(u8, written_logs, "Test log");
+    try testing.expectEqual(1, actual_log_count);
+}
+
 /// Logs a message with trace level.
 pub fn trace(
     comptime src: std.builtin.SourceLocation,
@@ -161,6 +192,15 @@ pub fn tracei(
     args: anytype,
 ) void {
     logi(min_interval, .trace, src, format, args);
+}
+
+/// Logs a message with trace level only once.
+pub fn tracez(
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    logz(.trace, src, format, args);
 }
 
 /// Logs a message with debug level.
@@ -182,6 +222,15 @@ pub fn debugi(
     logi(min_interval, .debug, src, format, args);
 }
 
+/// Logs a message with debug level only once.
+pub fn debugz(
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    logz(.debug, src, format, args);
+}
+
 /// Logs a message with info level.
 pub fn info(
     comptime src: std.builtin.SourceLocation,
@@ -199,6 +248,15 @@ pub fn infoi(
     args: anytype,
 ) void {
     logi(min_interval, .info, src, format, args);
+}
+
+/// Logs a message with info level only once.
+pub fn infoz(
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    logz(.info, src, format, args);
 }
 
 /// Logs a message with warn level.
@@ -220,6 +278,15 @@ pub fn warni(
     logi(min_interval, .warn, src, format, args);
 }
 
+/// Logs a message with warn level only once.
+pub fn warnz(
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    logz(.warn, src, format, args);
+}
+
 /// Logs a message with error level.
 pub fn err(
     comptime src: std.builtin.SourceLocation,
@@ -237,6 +304,15 @@ pub fn erri(
     args: anytype,
 ) void {
     logi(min_interval, .err, src, format, args);
+}
+
+/// Logs a message with error level only once.
+pub fn errz(
+    comptime src: std.builtin.SourceLocation,
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    logz(.err, src, format, args);
 }
 
 test {
