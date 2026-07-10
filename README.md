@@ -22,7 +22,7 @@ var stdout_buffer: [1024]u8 = undefined;
 var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
 const stdout_writer = &stdout_file_writer.interface;
 
-try nanozlog.initNanoZlog(io, allocator, stdout_writer, .{});
+try nanozlog.initNanoZlog(allocator, io, stdout_writer, .{});
 defer nanozlog.deinitNanoZlog(allocator);
 
 const n: usize = 100;
@@ -45,7 +45,7 @@ fn onQueueFull(args: *anyopaque) void {
 }
 
 // When initializing nanozlog
-try initNanoZlog(io, allocator, writer, .{ .log_q_full_cb = onQueueFull, .log_q_full_cb_args = undefined });
+try initNanoZlog(allocator, io, writer, .{ .log_q_full_cb = onQueueFull, .log_q_full_cb_args = undefined });
 ```
 
 ### Custom Print Meta Callback (`print_meta_cb`)
@@ -65,7 +65,7 @@ fn customPrintMeta(writer: *std.Io.Writer, meta: nanozlog.Meta) std.Io.Writer.Er
 }
 
 // When initializing nanozlog
-try initNanoZlog(io, allocator, writer, .{ .print_meta_cb = customPrintMeta });
+try initNanoZlog(allocator, io, writer, .{ .print_meta_cb = customPrintMeta });
 ```
 
 ### Thread Buffer Cleanup (`deinitThreadBuffer`)

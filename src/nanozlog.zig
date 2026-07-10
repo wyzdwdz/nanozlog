@@ -34,8 +34,8 @@ pub const NanoZlog = struct {
 
     threadlocal var thread_buffer: ?*ThreadBuffer = null;
 
-    _io: std.Io,
     _allocator: std.mem.Allocator,
+    _io: std.Io,
     _writer: *std.Io.Writer,
 
     _timezone: zeit.TimeZone,
@@ -116,14 +116,14 @@ pub const NanoZlog = struct {
     };
 
     pub fn init(
-        io: std.Io,
         allocator: std.mem.Allocator,
+        io: std.Io,
         writer: *std.Io.Writer,
         config: Config,
     ) !Self {
         return .{
-            ._io = io,
             ._allocator = allocator,
+            ._io = io,
             ._timezone = if (config.is_localtime) try zeit.local(allocator, io, .{}) else zeit.utc,
             ._writer = writer,
             ._tscns = try .init(io, .{}),

@@ -2,10 +2,7 @@ const std = @import("std");
 const nanozlog = @import("nanozlog");
 
 pub fn main(init: std.process.Init) !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
+    const allocator = init.arena.allocator();
     const io = init.io;
 
     var w_buffer: [4096]u8 = undefined;
@@ -14,7 +11,7 @@ pub fn main(init: std.process.Init) !void {
 
     var has_drop: bool = false;
 
-    try nanozlog.initNanoZlog(io, allocator, writer, .{
+    try nanozlog.initNanoZlog(allocator, io, writer, .{
         .queue_size = 1 << 24,
         .log_q_full_cb = handleFull,
         .log_q_full_cb_args = @ptrCast(&has_drop),

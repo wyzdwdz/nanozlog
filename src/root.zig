@@ -36,8 +36,8 @@ pub const Config = NanoZlog.Config;
 
 /// Initializes the global NanoZlog instance.
 pub fn initNanoZlog(
-    io: std.Io,
     allocator: std.mem.Allocator,
+    io: std.Io,
     writer: *std.Io.Writer,
     config: Config,
 ) Error!void {
@@ -46,7 +46,7 @@ pub fn initNanoZlog(
     } else {
         const ptr_nanozlog = allocator.create(NanoZlog) catch
             return Error.LoggerInitializationFailed;
-        ptr_nanozlog.* = NanoZlog.init(io, allocator, writer, config) catch
+        ptr_nanozlog.* = NanoZlog.init(allocator, io, writer, config) catch
             return Error.LoggerInitializationFailed;
         ptr_nanozlog.*.start() catch
             return Error.LoggerInitializationFailed;
@@ -67,7 +67,7 @@ pub fn deinitNanoZlog(allocator: std.mem.Allocator) void {
 test "init and deinit NanoZlog" {
     var buffer: [4096]u8 = undefined;
     var discarding = std.Io.Writer.Discarding.init(&buffer);
-    try initNanoZlog(testing.io, testing.allocator, &discarding.writer, .{});
+    try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
     try testing.expect(ptr_log != null);
     try testing.expect(ptr_log.?._config.is_block == false);
     deinitNanoZlog(testing.allocator);
@@ -106,7 +106,7 @@ test "log" {
     var buffer: [4096]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
     const a = 5;
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{});
     log(.debug, @src(), "Test log {d}", .{a});
     deinitNanoZlog(testing.allocator);
     try testing.expectStringEndsWith(buffer[0..fixed.end], "Test log 5\n");
@@ -135,7 +135,7 @@ test "logi" {
     var buffer: [51200]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
     const a = 10;
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{});
     for (0..100) |_| {
         logi(100_000_000_000, .debug, @src(), "Test log {d}", .{a});
     }
@@ -165,7 +165,7 @@ test "logz" {
     var buffer: [51200]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
     const a = 10;
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{});
     for (0..100) |_| {
         logz(.debug, @src(), "Test log {d}", .{a});
     }
@@ -326,7 +326,7 @@ fn testPrintMeta(writer: *std.Io.Writer, meta: Meta) std.Io.Writer.Error!void {
 test "printMetaCB" {
     var buffer: [4096]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{ .print_meta_cb = testPrintMeta });
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{ .print_meta_cb = testPrintMeta });
     log(.debug, @src(), "Test log", .{});
     deinitNanoZlog(testing.allocator);
     try testing.expectStringStartsWith(buffer[0..fixed.end], "Test Print Meta CB");
@@ -335,7 +335,7 @@ test "printMetaCB" {
 test "multithread" {
     var buffer: [4096]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{});
 
     const Closure = struct {
         fn func() void {
@@ -389,7 +389,7 @@ test "min level" {
     var buffer: [4096]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
 
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{ .min_level = .warn });
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{ .min_level = .warn });
 
     debug(@src(), "Test log {d}", .{1});
     trace(@src(), "Test log {d}", .{5});
@@ -407,7 +407,7 @@ test "dynamic string" {
     var buffer: [4096]u8 = undefined;
     var fixed = std.Io.Writer.fixed(&buffer);
 
-    try initNanoZlog(testing.io, testing.allocator, &fixed, .{});
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{});
 
     var buf: [1024]u8 = undefined;
     const str = try std.fmt.bufPrint(&buf, "Dynamic String", .{});
