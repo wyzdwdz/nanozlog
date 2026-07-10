@@ -142,7 +142,6 @@ pub const NanoZlog = struct {
         if (self._polling_worker) |*worker| {
             _ = worker.await(self._io);
         }
-
         self._writer.flush() catch {};
 
         for (self._thread_buffers.items) |buffer| {
@@ -162,15 +161,15 @@ pub const NanoZlog = struct {
 
     pub fn deinitThreadBuffer() void {
         if (thread_buffer) |buffer| {
-            thread_buffer = null;
             buffer.should_deinit.store(true, .release);
+            thread_buffer = null;
         }
     }
 
     pub fn start(self: *Self) !void {
         try self.initDummyBgLogInfos();
-        self._polling_worker = try self._io.concurrent(Self.pollingWorker, .{self});
         self._is_polling.store(true, .release);
+        self._polling_worker = try self._io.concurrent(Self.pollingWorker, .{self});
     }
 
     pub fn rdtsc(self: Self) i64 {
