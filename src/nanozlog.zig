@@ -159,6 +159,10 @@ pub const NanoZlog = struct {
         self._bg_thread_buffers.deinit(self._allocator);
     }
 
+    pub fn initThreadBuffer(self: *Self) !void {
+        try self.preallocate();
+    }
+
     pub fn deinitThreadBuffer() void {
         if (thread_buffer) |buffer| {
             buffer.should_deinit.store(true, .release);
@@ -251,9 +255,7 @@ pub const NanoZlog = struct {
     }
 
     fn preallocate(self: *Self) !void {
-        if (thread_buffer) |_| {
-            return;
-        } else {
+        if (thread_buffer == null) {
             const ptr_thread_buffer = try self._allocator.create(ThreadBuffer);
             ptr_thread_buffer.* = try ThreadBuffer.init(self._allocator, self._config.queue_size);
             thread_buffer = ptr_thread_buffer;
@@ -487,6 +489,7 @@ pub const NanoZlog = struct {
             }
             node.header = node.tb.varq.front();
             if (node.header == null and node.tb.should_deinit.load(.acquire)) {
+                node.tb.deinit();
                 self._allocator.destroy(node.tb);
                 _ = self._bg_thread_buffers.swapRemove(i);
             } else {

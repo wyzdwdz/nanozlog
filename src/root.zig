@@ -18,6 +18,7 @@ pub const Error = error{
     LoggerAlreadyInitialized,
     LoggerInitializationFailed,
     LoggerIsNotInitialized,
+    ThreadBufferInitializationFailed,
 };
 
 /// Configuration options for NanoZlog.
@@ -74,7 +75,29 @@ test "init and deinit NanoZlog" {
     try testing.expect(ptr_log == null);
 }
 
+/// Initializes the thread-local buffer used by NanoZlog for the current thread.
+/// **Not necessary**, buffer will be initialized automatically when logging the first one in this thread.
+/// This is mainly used for pre-allocating the buffer outside of performance-critical code paths to avoid latency spikes during the first log call.
+pub fn initThreadBuffer() Error!void {
+    if (ptr_log) |logger| {
+        logger.initThreadBuffer() catch return Error.ThreadBufferInitializationFailed;
+    } else {
+        return Error.LoggerIsNotInitialized;
+    }
+}
+
+test "initThreadBuffer" {
+    var buffer: [4096]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&buffer);
+    try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
+    defer deinitNanoZlog(testing.allocator);
+    try initThreadBuffer();
+    try testing.expect(ptr_log.?._thread_buffers.items.len == 1);
+}
+
 /// Deinitializes the thread-local buffer used by NanoZlog for the current thread.
+/// **Not necessary**, all buffers will be deinitialized automatically when calling `deinitNanoZlog`.
+/// This is mainly used for explicitly freeing memory when a thread is about to terminate or no longer needs logging. It helps prevent memory accumulation.
 pub fn deinitThreadBuffer() void {
     NanoZlog.deinitThreadBuffer();
 }

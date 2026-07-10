@@ -68,13 +68,22 @@ fn customPrintMeta(writer: *std.Io.Writer, meta: nanozlog.Meta) std.Io.Writer.Er
 try initNanoZlog(allocator, io, writer, .{ .print_meta_cb = customPrintMeta });
 ```
 
-### Thread Buffer Cleanup (`deinitThreadBuffer`)
+### Thread Buffer Management (`initThreadBuffer`, `deinitThreadBuffer`)
 
-If your application creates and destroys many threads dynamically, you should call `deinitThreadBuffer()` before a thread exits to clean up its local logging buffer and prevent memory leaks.
+Thread-local buffers are managed automatically by default: a buffer is initialized lazily upon the first log call in a thread, and all thread buffers are fully cleaned up when `deinitNanoZlog` is called. 
+
+However, you can explicitly manage them for more predictable latency and memory footprint:
+
+- **`initThreadBuffer()`**: Call this outside of your hot path to pre-allocate the thread's logging buffer. This prevents the very first log call in that thread from suffering an allocation latency spike.
+- **`deinitThreadBuffer()`**: Call this before a thread exits if your application dynamically creates and destroys many short-lived threads. This explicitly frees the thread's buffer to prevent memory accumulation over time.
 
 ```zig
-fn workerThread() void {
-    // Clean up the thread-local buffer when the thread finishes
+fn workerThread() !void {
+    // 1. (Optional) Pre-allocate the buffer to avoid latency spikes on the first log
+    try nanozlog.initThreadBuffer();
+    
+    // 2. (Optional) Clean up the thread-local buffer when the thread finishes 
+    // to prevent memory accumulation in dynamic thread pools
     defer nanozlog.deinitThreadBuffer();
 
     nanozlog.info(@src(), "Worker thread started", .{});

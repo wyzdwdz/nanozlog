@@ -18,7 +18,7 @@ pub fn main(init: std.process.Init) !void {
     });
     defer nanozlog.deinitNanoZlog(allocator);
 
-    nanozlog.info(@src(), "Benchmark started Warm-Up", .{});
+    try nanozlog.initThreadBuffer();
 
     {
         const start = std.Io.Timestamp.now(io, .awake).toNanoseconds();
