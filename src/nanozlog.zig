@@ -434,21 +434,22 @@ pub const NanoZlog = struct {
                 .void => {},
                 .float, .int, .bool, .@"enum", .error_set => {
                     const size = @sizeOf(T);
-                    @memcpy(out[idx .. idx + size], std.mem.asBytes(&val));
+                    const ptr: *align(1) T = @ptrCast(out[idx..].ptr);
+                    ptr.* = val;
                     idx += size;
                 },
                 .pointer => |p| {
                     if (p.size == .slice and p.child == u8) {
-                        const size = @sizeOf(usize);
-                        const ptr = out[idx .. idx + size][0..size];
-                        std.mem.writeInt(usize, ptr, val.len, .native);
-                        idx += size;
+                        const ptr: *align(1) usize = @ptrCast(out[idx..].ptr);
+                        ptr.* = val.len;
+                        idx += @sizeOf(usize);
 
                         @memcpy(out[idx .. idx + val.len], val);
                         idx += val.len;
                     } else if (p.size == .one) {
                         const size = @sizeOf(T);
-                        @memcpy(out[idx .. idx + size], std.mem.asBytes(&val));
+                        const ptr: *align(1) T = @ptrCast(out[idx..].ptr);
+                        ptr.* = val;
                         idx += size;
                     } else unreachable;
                 },
