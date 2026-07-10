@@ -142,6 +142,7 @@ pub const NanoZlog = struct {
         if (self._polling_worker) |*worker| {
             _ = worker.await(self._io);
         }
+
         self._writer.flush() catch {};
 
         for (self._thread_buffers.items) |buffer| {
@@ -161,8 +162,8 @@ pub const NanoZlog = struct {
 
     pub fn deinitThreadBuffer() void {
         if (thread_buffer) |buffer| {
-            buffer.should_deinit.store(true, .release);
             thread_buffer = null;
+            buffer.should_deinit.store(true, .release);
         }
     }
 
