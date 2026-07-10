@@ -98,7 +98,7 @@ fn log(
 
     if (ptr_log) |logger| {
         const tsc = logger.rdtsc();
-        logger.log(tsc, &S.log_id, src, message_level, format, args) catch {};
+        logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
 }
 
@@ -127,7 +127,7 @@ fn logi(
 
         if (ns < S.limit_ns) return;
         S.limit_ns = ns + min_interval;
-        logger.log(tsc, &S.log_id, src, message_level, format, args) catch {};
+        logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
 }
 
@@ -157,7 +157,7 @@ fn logz(
         if (S.log_once == true) return;
         S.log_once = true;
         const tsc = logger.rdtsc();
-        logger.log(tsc, &S.log_id, src, message_level, format, args) catch {};
+        logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
 }
 

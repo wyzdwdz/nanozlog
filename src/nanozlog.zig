@@ -192,25 +192,32 @@ pub const NanoZlog = struct {
         comptime message_level: Level,
         comptime format: []const u8,
         args: anytype,
-    ) !void {
+    ) void {
         if (@intFromEnum(message_level) > @intFromEnum(self._config.min_level)) return;
 
         const Args = @TypeOf(args);
 
         if (log_id.* == 0) {
-            try self.registerLogInfo(
+            self.registerLogInfo(
                 log_id,
                 generateFormatTo(Args, format),
                 src,
                 message_level,
-            );
+            ) catch |err| {
+                std.debug.print("[NanoZlog] Failed to register log info: {}\n", .{err});
+                return;
+            };
         }
 
         const alloc_size = @sizeOf(i64) + getArgsSize(args);
         var q_full_cb = true;
 
         while (true) {
-            const header_opt = try self.allocMsg(@intCast(alloc_size), q_full_cb);
+            const header_opt = self.allocMsg(@intCast(alloc_size), q_full_cb) catch |err| {
+                std.debug.print("[NanoZlog] Failed to allocate log message: {}\n", .{err});
+                return;
+            };
+
             if (header_opt) |header| {
                 header.log_id = log_id.*;
 
@@ -281,10 +288,11 @@ pub const NanoZlog = struct {
             const before = self._tscns.rdns();
 
             self.poll(false) catch |err| {
-                std.debug.panic(
-                    "FATAL: NanoZlog polling worker crashed during poll! Error: {s}",
-                    .{@errorName(err)},
+                std.debug.print(
+                    "[NanoZlog] Backend polling worker encountered an error: {}\n",
+                    .{err},
                 );
+                return;
             };
 
             const delay = self._tscns.rdns() - before;
@@ -293,19 +301,15 @@ pub const NanoZlog = struct {
                     .fromNanoseconds(self._config.polling_interval - delay),
                     .awake,
                 ) catch |err| {
-                    std.debug.panic(
-                        "FATAL: NanoZlog polling worker sleep failed! Error: {s}",
-                        .{@errorName(err)},
-                    );
+                    std.debug.print("[NanoZlog] Backend polling worker sleep failed: {}\n", .{err});
+                    return;
                 };
             }
         }
 
         self.poll(true) catch |err| {
-            std.debug.panic(
-                "FATAL: NanoZlog polling worker crashed during poll! Error: {s}",
-                .{@errorName(err)},
-            );
+            std.debug.print("[NanoZlog] Backend polling worker encountered an error: {}\n", .{err});
+            return;
         };
     }
 
