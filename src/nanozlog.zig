@@ -48,8 +48,7 @@ pub const NanoZlog = struct {
     _bg_thread_buffers: std.ArrayList(HeapNode) = .empty,
     _buffer_mutex: std.Io.Mutex = .init,
 
-    _polling_worker: ?std.Io.Future(@typeInfo(@TypeOf(pollingWorker))
-        .@"fn".return_type.?) = null,
+    _polling_worker: ?std.Io.Future(void) = null,
     _is_polling: std.atomic.Value(bool) = .init(false),
 
     _tscns: TscNs,
@@ -141,7 +140,7 @@ pub const NanoZlog = struct {
 
         self._is_polling.store(false, .release);
         if (self._polling_worker) |*worker| {
-            _ = worker.await(self._io) catch unreachable;
+            _ = worker.await(self._io);
         }
         self._writer.flush() catch {};
 
@@ -277,19 +276,37 @@ pub const NanoZlog = struct {
         });
     }
 
-    fn pollingWorker(self: *Self) !void {
+    fn pollingWorker(self: *Self) void {
         while (self._is_polling.load(.acquire)) {
             const before = self._tscns.rdns();
 
-            try self.poll(false);
+            self.poll(false) catch |err| {
+                std.debug.panic(
+                    "FATAL: NanoZlog polling worker crashed during poll! Error: {s}",
+                    .{@errorName(err)},
+                );
+            };
 
             const delay = self._tscns.rdns() - before;
             if (delay < self._config.polling_interval) {
-                try self._io.sleep(.fromNanoseconds(self._config.polling_interval - delay), .awake);
+                self._io.sleep(
+                    .fromNanoseconds(self._config.polling_interval - delay),
+                    .awake,
+                ) catch |err| {
+                    std.debug.panic(
+                        "FATAL: NanoZlog polling worker sleep failed! Error: {s}",
+                        .{@errorName(err)},
+                    );
+                };
             }
         }
 
-        try self.poll(true);
+        self.poll(true) catch |err| {
+            std.debug.panic(
+                "FATAL: NanoZlog polling worker crashed during poll! Error: {s}",
+                .{@errorName(err)},
+            );
+        };
     }
 
     fn generateFormatTo(comptime Args: type, comptime format: []const u8) FormatToFn {
