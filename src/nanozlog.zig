@@ -640,8 +640,8 @@ pub const NanoZlog = struct {
             }
 
             return ret;
+        } else {
+            return error.ThreadBufferIsNull;
         }
-
-        unreachable;
     }
 };
