@@ -102,6 +102,17 @@ pub fn deinitThreadBuffer() void {
     NanoZlog.deinitThreadBuffer();
 }
 
+test "deinitThreadBuffer" {
+    var buffer: [4096]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&buffer);
+    try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
+    defer deinitNanoZlog(testing.allocator);
+    try initThreadBuffer();
+    deinitThreadBuffer();
+    try testing.io.sleep(.fromSeconds(3), .awake);
+    try testing.expect(ptr_log.?._thread_buffers.items.len == 0);
+}
+
 fn LogId(comptime src: std.builtin.SourceLocation) type {
     return struct {
         const _src = src;
