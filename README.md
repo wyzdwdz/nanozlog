@@ -117,3 +117,13 @@ Benchmark result on AMD Ryzen™ 9 9950X CPU and 6000 MT/s DDR5 RAM
 | Single Integer |  100,000 |         687.558 |        145,442,275 |            6.876 |  false  |
 | Two Integers   |  100,000 |         682.899 |        146,434,539 |            6.829 |  false  |
 | Single Double  |  100,000 |         688.368 |        145,271,134 |            6.884 |  false  |
+
+Benchmark result on Apple M5 CPU (10-core) and 16 GB Unified Memory
+
+| Test Case      | Messages | Total Time (µs) | Throughput (msg/s) | Latency (ns/msg) | Dropped |
+| :------------- | -------: | --------------: | -----------------: | ---------------: | :-----: |
+| Static String  |  100,000 |         259.125 |        385,914,134 |            2.591 |  false  |
+| Dynamic String |  100,000 |         646.583 |        154,659,185 |            6.466 |  false  |
+| Single Integer |  100,000 |         273.709 |        365,351,523 |            2.737 |  false  |
+| Two Integers   |  100,000 |         327.666 |        305,188,820 |            3.277 |  false  |
+| Single Double  |  100,000 |         323.584 |        309,038,766 |            3.236 |  false  |
