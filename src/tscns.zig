@@ -237,3 +237,28 @@ pub const TscNs = struct {
         _ = self._param_seq.fetchAdd(1, .release);
     }
 };
+
+test "tsc2ns retry" {
+    const testing = std.testing;
+
+    var tscns = TscNs{
+        ._io = testing.io,
+        ._ns_per_tsc = .init(@as(f64, 1.0)),
+        ._base_tsc = .init(@as(i64, 10)),
+        ._base_ns = .init(@as(i64, 100)),
+        ._calibrate_interval_ns = 1_000_000_000,
+        ._param_seq = .init(1),
+    };
+
+    const Closure = struct {
+        fn finishUpdate(io: std.Io, ptr: *TscNs) void {
+            io.sleep(.fromMilliseconds(1), .awake) catch {};
+            ptr._param_seq.store(2, .release);
+        }
+    };
+
+    var future = try testing.io.concurrent(Closure.finishUpdate, .{ testing.io, &tscns });
+    defer _ = future.await(testing.io);
+
+    try testing.expectEqual(@as(i64, 110), tscns.tsc2ns(20));
+}

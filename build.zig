@@ -21,12 +21,25 @@ pub fn build(b: *std.Build) void {
 
     const mod_unit_tests = b.addTest(.{
         .root_module = nanozlog_mod,
+        .use_llvm = true,
     });
 
     const run_mod_unit_tests = b.addRunArtifact(mod_unit_tests);
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_unit_tests.step);
+
+    const kcov = b.addSystemCommand(&.{
+        "kcov",
+        "--clean",
+        "--include-path=src",
+        "kcov-out",
+    });
+
+    kcov.addArtifactArg(mod_unit_tests);
+
+    const coverage_step = b.step("coverage", "Generate test coverage (kcov)");
+    coverage_step.dependOn(&kcov.step);
 
     const bench_exe = b.addExecutable(.{
         .name = "benchmark",

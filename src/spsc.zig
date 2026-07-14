@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 
 const cache_line = std.atomic.cache_line;
 
@@ -116,3 +117,72 @@ pub const SpscVarQueue = struct {
         _ = self._read_idx.fetchAdd(blk_sz, .release);
     }
 };
+
+test "wrap alloc" {
+    const block_size = @sizeOf(SpscVarQueue.MsgHeader);
+
+    var queue = try SpscVarQueue.init(testing.allocator, block_size * 5);
+    defer queue.deinit();
+
+    for (0..4) |_| {
+        const header = queue.alloc(0) orelse return error.TestUnexpectedResult;
+        header.push(0);
+    }
+
+    for (0..4) |_| {
+        try testing.expect(queue.front() != null);
+        queue.pop();
+    }
+
+    try testing.expectEqual(@as(u32, 4), queue._read_idx.load(.monotonic));
+    try testing.expectEqual(@as(u32, 4), queue._write_idx);
+    try testing.expectEqual(@as(u32, 1), queue._free_write_cnt);
+
+    const wrapped = queue.alloc(0) orelse return error.TestUnexpectedResult;
+    try testing.expectEqual(&queue._blk[0], wrapped);
+    try testing.expectEqual(@as(u32, 1), queue._write_idx);
+    try testing.expectEqual(@as(u32, 3), queue._free_write_cnt);
+    try testing.expectEqual(@as(u32, 1), queue._blk[4].size.load(.monotonic));
+
+    wrapped.push(0);
+
+    try testing.expectEqual(&queue._blk[0], queue.front().?);
+    try testing.expectEqual(@as(u32, 0), queue._read_idx.load(.monotonic));
+}
+
+test "wrap space" {
+    const block_size = @sizeOf(SpscVarQueue.MsgHeader);
+
+    var queue = try SpscVarQueue.init(testing.allocator, block_size * 5);
+    defer queue.deinit();
+
+    for (0..4) |_| {
+        const header = queue.alloc(0) orelse return error.TestUnexpectedResult;
+        header.push(0);
+    }
+
+    for (0..4) |_| {
+        try testing.expect(queue.front() != null);
+        queue.pop();
+    }
+
+    const wrapped = queue.alloc(0) orelse return error.TestUnexpectedResult;
+    wrapped.push(0);
+
+    try testing.expectEqual(@as(u32, 4), queue._read_idx.load(.monotonic));
+    try testing.expectEqual(@as(u32, 1), queue._write_idx);
+
+    const second = queue.alloc(0) orelse return error.TestUnexpectedResult;
+    second.push(0);
+    const third = queue.alloc(0) orelse return error.TestUnexpectedResult;
+    third.push(0);
+
+    try testing.expectEqual(@as(u32, 4), queue._read_idx.load(.monotonic));
+    try testing.expectEqual(@as(u32, 3), queue._write_idx);
+    try testing.expectEqual(@as(u32, 1), queue._free_write_cnt);
+
+    try testing.expect(queue.alloc(0) == null);
+    try testing.expectEqual(@as(u32, 4), queue._read_idx.load(.monotonic));
+    try testing.expectEqual(@as(u32, 3), queue._write_idx);
+    try testing.expectEqual(@as(u32, 1), queue._free_write_cnt);
+}

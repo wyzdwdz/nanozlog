@@ -51,14 +51,30 @@ pub fn deinitNanoZlog(allocator: std.mem.Allocator) void {
     }
 }
 
-test "init and deinit NanoZlog" {
+test "init deinit" {
     var buffer: [4096]u8 = undefined;
     var discarding = std.Io.Writer.Discarding.init(&buffer);
     try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
     try testing.expect(ptr_log != null);
     try testing.expect(ptr_log.?._config.is_block == false);
+    try testing.expectError(
+        Error.LoggerAlreadyInitialized,
+        initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{}),
+    );
     deinitNanoZlog(testing.allocator);
     try testing.expect(ptr_log == null);
+}
+
+test "init failure" {
+    var buffer: [@sizeOf(NanoZlog)]u8 align(@alignOf(NanoZlog)) = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    var writer_buffer: [4096]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&writer_buffer);
+
+    try testing.expectError(
+        Error.LoggerInitializationFailed,
+        initNanoZlog(fba.allocator(), testing.io, &discarding.writer, .{}),
+    );
 }
 
 /// Initializes the thread-local buffer used by NanoZlog for the current thread.
@@ -72,7 +88,7 @@ pub fn initThreadBuffer() Error!void {
     }
 }
 
-test "initThreadBuffer" {
+test "thread init" {
     var buffer: [4096]u8 = undefined;
     var discarding = std.Io.Writer.Discarding.init(&buffer);
     try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
@@ -88,7 +104,7 @@ pub fn deinitThreadBuffer() void {
     NanoZlog.deinitThreadBuffer();
 }
 
-test "deinitThreadBuffer" {
+test "thread deinit" {
     var buffer: [4096]u8 = undefined;
     var discarding = std.Io.Writer.Discarding.init(&buffer);
     try initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{});
@@ -369,13 +385,13 @@ test "multithread" {
         }
     };
 
-    var t1 = try std.Thread.spawn(.{}, Closure.func, .{});
-    var t2 = try std.Thread.spawn(.{}, Closure.func, .{});
-    var t3 = try std.Thread.spawn(.{}, Closure.func, .{});
+    var f1 = try testing.io.concurrent(Closure.func, .{});
+    var f2 = try testing.io.concurrent(Closure.func, .{});
+    var f3 = try testing.io.concurrent(Closure.func, .{});
 
-    t1.join();
-    t2.join();
-    t3.join();
+    _ = f1.await(testing.io);
+    _ = f2.await(testing.io);
+    _ = f3.await(testing.io);
 
     deinitNanoZlog(testing.allocator);
 
@@ -444,4 +460,107 @@ test "dynamic string" {
     );
     const count = std.mem.count(u8, written_logs, "benchmark test log Dynamic String");
     try std.testing.expectEqual(@as(usize, 5), count);
+}
+
+test "periodic flush" {
+    var buffer: [4096]u8 = undefined;
+    var fixed = std.Io.Writer.fixed(&buffer);
+
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{
+        .flush_delay = 1_000_000_000,
+        .polling_interval = 1_000_000,
+    });
+    defer deinitNanoZlog(testing.allocator);
+
+    try initThreadBuffer();
+
+    var poll_count: usize = 0;
+    while (ptr_log.?._next_flush_time == std.math.maxInt(i64) and
+        poll_count < 100) : (poll_count += 1)
+    {
+        try testing.io.sleep(.fromMilliseconds(1), .awake);
+    }
+
+    try testing.expect(ptr_log.?._next_flush_time != std.math.maxInt(i64));
+
+    ptr_log.?._next_flush_time = 0;
+    try testing.io.sleep(.fromMilliseconds(10), .awake);
+    try testing.expectEqual(@as(i64, 0), ptr_log.?._next_flush_time);
+}
+
+test "cached bg node" {
+    var buffer: [4096]u8 = undefined;
+    var fixed = std.Io.Writer.fixed(&buffer);
+
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{
+        .polling_interval = 1_000_000,
+    });
+    defer deinitNanoZlog(testing.allocator);
+
+    try testing.io.sleep(.fromMilliseconds(10), .awake);
+
+    info(@src(), "future log", .{});
+
+    const thread_buffer = ptr_log.?._thread_buffers.items[0];
+    const header = thread_buffer.varq.front().?;
+    header.set_tsc(std.math.maxInt(i64));
+
+    var poll_count: usize = 0;
+    while (ptr_log.?._bg_thread_buffers.items.len == 0 and poll_count < 100) : (poll_count += 1) {
+        try testing.io.sleep(.fromMilliseconds(1), .awake);
+    }
+
+    try testing.expect(ptr_log.?._bg_thread_buffers.items.len != 0);
+    try testing.expect(ptr_log.?._bg_thread_buffers.items[0].header != null);
+
+    try testing.io.sleep(.fromMilliseconds(10), .awake);
+
+    try testing.expect(ptr_log.?._bg_thread_buffers.items[0].header != null);
+}
+
+test "queue full" {
+    const Closure = struct {
+        fn onQueueFull(args: *anyopaque) void {
+            const count: *usize = @ptrCast(@alignCast(args));
+            count.* += 1;
+        }
+    };
+
+    var buffer: [4096]u8 = undefined;
+    var fixed = std.Io.Writer.fixed(&buffer);
+    var q_full_count: usize = 0;
+
+    try initNanoZlog(testing.allocator, testing.io, &fixed, .{
+        .queue_size = 24,
+        .polling_interval = 1_000_000_000,
+        .log_q_full_cb = Closure.onQueueFull,
+        .log_q_full_cb_args = &q_full_count,
+    });
+
+    try testing.io.sleep(.fromMilliseconds(10), .awake);
+
+    info(@src(), "first log", .{});
+    info(@src(), "second log", .{});
+
+    try testing.expectEqual(@as(usize, 1), q_full_count);
+
+    deinitNanoZlog(testing.allocator);
+
+    const written_logs = buffer[0..fixed.end];
+    try testing.expectEqual(@as(usize, 1), std.mem.count(u8, written_logs, "first log"));
+    try testing.expectEqual(@as(usize, 0), std.mem.count(u8, written_logs, "second log"));
+
+    var default_callback_buffer: [4096]u8 = undefined;
+    var default_callback_fixed = std.Io.Writer.fixed(&default_callback_buffer);
+
+    try initNanoZlog(testing.allocator, testing.io, &default_callback_fixed, .{
+        .queue_size = 24,
+        .polling_interval = 1_000_000_000,
+    });
+    defer deinitNanoZlog(testing.allocator);
+
+    try testing.io.sleep(.fromMilliseconds(10), .awake);
+
+    info(@src(), "first default callback log", .{});
+    info(@src(), "second default callback log", .{});
 }

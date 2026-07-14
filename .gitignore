@@ -9,3 +9,4 @@ zig-pkg/
 log.txt
 compile_commands.json
 .cache/
+kcov-out/

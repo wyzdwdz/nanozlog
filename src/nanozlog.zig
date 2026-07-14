@@ -662,3 +662,18 @@ pub const NanoZlog = struct {
         }
     }
 };
+
+test "deinit active buffer" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    defer testing.expect(gpa.deinit() == .ok) catch @panic("leak");
+    const allocator = gpa.allocator();
+
+    var writer_buffer: [4096]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&writer_buffer);
+
+    var logger = try NanoZlog.init(allocator, testing.io, &discarding.writer, .{});
+    try logger.initThreadBuffer();
+    try testing.expectEqual(@as(usize, 1), logger._thread_buffers.items.len);
+
+    logger.deinit();
+}
