@@ -8,9 +8,7 @@ const NanoZlog = @import("nanozlog.zig").NanoZlog;
 const LogQFullCBFn = NanoZlog.LogQFullCBFn;
 const PrintMetaCBFn = NanoZlog.PrintMetaFn;
 
-/// Log level enum.
 pub const Level = NanoZlog.Level;
-/// Metadata for a log message.
 pub const Meta = NanoZlog.Meta;
 
 /// Errors returned by NanoZlog functions.
@@ -21,18 +19,6 @@ pub const Error = error{
     ThreadBufferInitializationFailed,
 };
 
-/// Configuration options for NanoZlog.
-///
-/// Includes the following fields:
-/// - `min_level`: Minimum log level to record (defaults to `.debug` in Debug mode, else `.info`).
-/// - `queue_size`: The size of the background SPSC queue (defaults to 1MB `1 << 20` bytes).
-/// - `flush_delay`: Nanoseconds to wait before auto-flushing the log buffer (defaults to 3,000,000,000 ns).
-/// - `polling_interval`: Nanoseconds between polling intervals for the background thread (defaults to 1,000,000,000 ns).
-/// - `is_localtime`: Whether to format timestamps in local time instead of UTC (defaults to `false`).
-/// - `is_block`: Whether a logging call should block when the log queue is full (defaults to `false`).
-/// - `log_q_full_cb`: A custom callback function to be invoked when the log queue is full (defaults to empty function).
-/// - `log_q_full_cb_args`: An anyopaque pointer used as log_q_full_cb callback function args (defaults to undefined).
-/// - `print_meta_cb`: A custom callback function to format and print log metadata. (defaults to builtin function).
 pub const Config = NanoZlog.Config;
 
 /// Initializes the global NanoZlog instance.
