@@ -21,6 +21,8 @@ pub const Error = error{
 
 pub const Config = NanoZlog.Config;
 
+var _is_shutting_down: std.atomic.Value(bool) = .init(false);
+
 /// Initializes the global NanoZlog instance.
 pub fn initNanoZlog(
     allocator: std.mem.Allocator,
@@ -39,6 +41,7 @@ pub fn initNanoZlog(
         ptr_nanozlog.*.start() catch
             return Error.LoggerInitializationFailed;
 
+        _is_shutting_down.store(false, .release);
         ptr_log = ptr_nanozlog;
     }
 }
@@ -46,6 +49,7 @@ pub fn initNanoZlog(
 /// Deinitializes the global NanoZlog instance and frees resources.
 pub fn deinitNanoZlog(allocator: std.mem.Allocator) void {
     if (ptr_log) |logger| {
+        _is_shutting_down.store(true, .release);
         logger.deinit();
         allocator.destroy(logger);
         ptr_log = null;
@@ -64,6 +68,33 @@ test "init deinit" {
     );
     deinitNanoZlog(testing.allocator);
     try testing.expect(ptr_log == null);
+}
+
+test "_is_shutting_down" {
+    var first_buffer: [4096]u8 = undefined;
+    var first_fixed = std.Io.Writer.fixed(&first_buffer);
+
+    try initNanoZlog(testing.allocator, testing.io, &first_fixed, .{});
+    deinitNanoZlog(testing.allocator);
+    try testing.expect(_is_shutting_down.load(.acquire));
+
+    var second_buffer: [4096]u8 = undefined;
+    var second_fixed = std.Io.Writer.fixed(&second_buffer);
+
+    try initNanoZlog(testing.allocator, testing.io, &second_fixed, .{});
+    try testing.expect(!_is_shutting_down.load(.acquire));
+
+    _is_shutting_down.store(true, .release);
+    debug(@src(), "log while shutting down", .{});
+    debugi(1000, @src(), "interval log while shutting down", .{});
+    debugz(@src(), "once log while shutting down", .{});
+    try testing.expectEqual(@as(usize, 0), second_fixed.end);
+
+    _is_shutting_down.store(false, .release);
+    info(@src(), "log after reinit", .{});
+    deinitNanoZlog(testing.allocator);
+
+    try testing.expectStringEndsWith(second_buffer[0..second_fixed.end], "log after reinit\n");
 }
 
 test "init failure" {
@@ -143,6 +174,7 @@ fn log(
     const S = LogId(src);
 
     if (ptr_log) |logger| {
+        if (_is_shutting_down.load(.acquire)) return;
         const tsc = logger.rdtsc();
         logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
@@ -168,6 +200,8 @@ fn logi(
     const S = LogId(src);
 
     if (ptr_log) |logger| {
+        if (_is_shutting_down.load(.acquire)) return;
+
         const tsc = logger.rdtsc();
         const ns = logger.tsc2ns(tsc);
 
@@ -200,8 +234,11 @@ fn logz(
     const S = LogId(src);
 
     if (ptr_log) |logger| {
+        if (_is_shutting_down.load(.acquire)) return;
+
         if (S.log_once.load(.acquire) == true) return;
         S.log_once.store(true, .release);
+
         const tsc = logger.rdtsc();
         logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
