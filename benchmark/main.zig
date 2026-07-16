@@ -134,7 +134,7 @@ pub fn main(init: std.process.Init) !void {
     }
 }
 
-fn handleFull(args: *anyopaque) void {
+fn handleFull(args: ?*anyopaque) void {
     const has_drop_ptr: *bool = @ptrCast(@alignCast(args));
     has_drop_ptr.* = true;
 }
