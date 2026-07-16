@@ -129,8 +129,8 @@ fn LogId(comptime src: std.builtin.SourceLocation) type {
     return struct {
         const _src = src;
         var log_id: std.atomic.Value(u32) = .init(0);
-        var limit_ns: i64 = 0;
-        var log_once: bool = false;
+        var limit_ns: std.atomic.Value(i64) = .init(0);
+        var log_once: std.atomic.Value(bool) = .init(false);
     };
 }
 
@@ -171,8 +171,8 @@ fn logi(
         const tsc = logger.rdtsc();
         const ns = logger.tsc2ns(tsc);
 
-        if (ns < S.limit_ns) return;
-        S.limit_ns = ns + min_interval;
+        if (ns < S.limit_ns.load(.acquire)) return;
+        S.limit_ns.store(ns + min_interval, .release);
         logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
 }
@@ -200,8 +200,8 @@ fn logz(
     const S = LogId(src);
 
     if (ptr_log) |logger| {
-        if (S.log_once == true) return;
-        S.log_once = true;
+        if (S.log_once.load(.acquire) == true) return;
+        S.log_once.store(true, .release);
         const tsc = logger.rdtsc();
         logger.log(tsc, &S.log_id, src, message_level, format, args);
     }
