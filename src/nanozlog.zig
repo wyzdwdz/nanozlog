@@ -60,6 +60,8 @@ _print_meta_cb: PrintMetaFn = &defaultPrintMeta,
 
 _next_flush_time: i64 = std.math.maxInt(i64),
 
+_is_shutting_down: std.atomic.Value(bool) = .init(false),
+
 _config: Config = .{},
 
 /// Log level enum.
@@ -149,6 +151,8 @@ pub fn init(
 }
 
 pub fn deinit(self: *NanoZlog) void {
+    self._is_shutting_down.store(true, .release);
+
     deinitThreadBuffer();
 
     self._is_polling.store(false, .release);
@@ -212,6 +216,8 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
+    if (self._is_shutting_down.load(.acquire)) return;
+
     if (@intFromEnum(message_level) > @intFromEnum(self._config.min_level)) return;
 
     const Args = @TypeOf(args);
