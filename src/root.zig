@@ -33,6 +33,7 @@ pub fn initNanoZlog(
     } else {
         const ptr_nanozlog = allocator.create(NanoZlog) catch
             return Error.LoggerInitializationFailed;
+        errdefer allocator.destroy(ptr_nanozlog);
         ptr_nanozlog.* = NanoZlog.init(allocator, io, writer, config) catch
             return Error.LoggerInitializationFailed;
         ptr_nanozlog.*.start() catch
@@ -74,6 +75,15 @@ test "init failure" {
     try testing.expectError(
         Error.LoggerInitializationFailed,
         initNanoZlog(fba.allocator(), testing.io, &discarding.writer, .{}),
+    );
+}
+
+test "queue size smaller than 24 Bytes" {
+    var buffer: [4096]u8 = undefined;
+    var discarding = std.Io.Writer.Discarding.init(&buffer);
+    try testing.expectError(
+        Error.LoggerInitializationFailed,
+        initNanoZlog(testing.allocator, testing.io, &discarding.writer, .{ .queue_size = 23 }),
     );
 }
 

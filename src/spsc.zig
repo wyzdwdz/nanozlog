@@ -39,6 +39,9 @@ _free_write_cnt: u32,
 _read_idx: std.atomic.Value(u32) align(cache_line) = .init(0),
 
 pub fn init(allocator: std.mem.Allocator, queue_size: u32) !SpscVarQueue {
+    const min_queue_size = @sizeOf(SpscVarQueue.MsgHeader) * 3;
+    if (queue_size < min_queue_size) return error.QueueSizeTooSmall;
+
     const blk_cnt = queue_size / @sizeOf(MsgHeader);
     const blk = try allocator.alignedAlloc(
         MsgHeader,
@@ -183,4 +186,8 @@ test "wrap space" {
     try testing.expectEqual(@as(u32, 4), queue._read_idx.load(.monotonic));
     try testing.expectEqual(@as(u32, 3), queue._write_idx);
     try testing.expectEqual(@as(u32, 1), queue._free_write_cnt);
+}
+
+test "queue too small" {
+    try testing.expectError(error.QueueSizeTooSmall, SpscVarQueue.init(testing.allocator, 12));
 }

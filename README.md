@@ -98,7 +98,7 @@ Configuration options for nanozlog.
 Includes the following fields:
 
 - `min_level`: Minimum log level to record (defaults to `.debug` in Debug mode, else `.info`).
-- `queue_size`: The size of the background SPSC queue (defaults to 1MB `1 << 20` bytes).
+- `queue_size`: The size of the background SPSC queue (defaults to 1MB `1 << 20` bytes, a size of at least 4 KB `1 << 12` is recommended).
 - `flush_delay`: Nanoseconds to wait before auto-flushing the log buffer (defaults to 3,000,000,000 ns).
 - `polling_interval`: Nanoseconds between polling intervals for the background thread (defaults to 1,000,000,000 ns).
 - `is_localtime`: Whether to format timestamps in local time instead of UTC (defaults to `false`).
