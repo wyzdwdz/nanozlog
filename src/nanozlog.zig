@@ -204,7 +204,7 @@ pub fn rdns(self: *NanoZlog) i64 {
 pub fn log(
     self: *NanoZlog,
     tsc: i64,
-    log_id: *u32,
+    log_id: *std.atomic.Value(u32),
     comptime src: std.builtin.SourceLocation,
     comptime message_level: Level,
     comptime format: []const u8,
@@ -214,7 +214,7 @@ pub fn log(
 
     const Args = @TypeOf(args);
 
-    if (log_id.* == 0) {
+    if (log_id.*.load(.acquire) == 0) {
         self.registerLogInfo(
             log_id,
             generateFormatTo(Args, format),
@@ -236,7 +236,7 @@ pub fn log(
         };
 
         if (header_opt) |header| {
-            header.log_id = log_id.*;
+            header.log_id = log_id.*.load(.monotonic);
 
             header.set_tsc(tsc);
 
@@ -281,7 +281,7 @@ fn preallocate(self: *NanoZlog) !void {
 
 fn registerLogInfo(
     self: *NanoZlog,
-    log_id: *u32,
+    log_id: *std.atomic.Value(u32),
     comptime func: FormatToFn,
     comptime src: std.builtin.SourceLocation,
     comptime message_level: Level,
@@ -289,7 +289,7 @@ fn registerLogInfo(
     try self._log_infos_mutex.lock(self._io);
     defer self._log_infos_mutex.unlock(self._io);
 
-    log_id.* = @intCast(self._log_infos.items.len + self._bg_log_infos.items.len);
+    log_id.*.store(@intCast(self._log_infos.items.len + self._bg_log_infos.items.len), .release);
 
     try self._log_infos.append(self._allocator, .{
         .func = func,
@@ -539,6 +539,7 @@ fn poll(self: *NanoZlog, force_flush: bool) !void {
     const now = self._tscns.tsc2ns(tsc);
     if (now > self._next_flush_time) {
         try self._writer.flush();
+        self._next_flush_time = std.math.maxInt(i64);
     } else if (self._next_flush_time == std.math.maxInt(i64)) {
         self._next_flush_time = now + self._config.flush_delay;
     }

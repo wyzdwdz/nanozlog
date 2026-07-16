@@ -118,7 +118,7 @@ test "thread deinit" {
 fn LogId(comptime src: std.builtin.SourceLocation) type {
     return struct {
         const _src = src;
-        var log_id: u32 = 0;
+        var log_id: std.atomic.Value(u32) = .init(0);
         var limit_ns: i64 = 0;
         var log_once: bool = false;
     };
@@ -484,8 +484,13 @@ test "periodic flush" {
     try testing.expect(ptr_log.?._next_flush_time != std.math.maxInt(i64));
 
     ptr_log.?._next_flush_time = 0;
-    try testing.io.sleep(.fromMilliseconds(10), .awake);
-    try testing.expectEqual(@as(i64, 0), ptr_log.?._next_flush_time);
+
+    poll_count = 0;
+    while (ptr_log.?._next_flush_time == 0 and poll_count < 100) : (poll_count += 1) {
+        try testing.io.sleep(.fromMilliseconds(1), .awake);
+    }
+
+    try testing.expect(ptr_log.?._next_flush_time != 0);
 }
 
 test "cached bg node" {
