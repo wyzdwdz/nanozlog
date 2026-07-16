@@ -29,8 +29,8 @@ pub const Meta = struct {
     thread_id: std.Thread.Id,
 };
 
-pub const LogQFullCBFn = *const fn (args: *anyopaque) void;
-fn emptyFn(_: *anyopaque) void {}
+pub const LogQFullCBFn = *const fn (args: ?*anyopaque) void;
+fn emptyFn(_: ?*anyopaque) void {}
 
 threadlocal var thread_buffer: ?*ThreadBuffer = null;
 
@@ -54,7 +54,7 @@ _is_polling: std.atomic.Value(bool) = .init(false),
 _tscns: TscNs,
 
 _log_q_full_cb: LogQFullCBFn = &emptyFn,
-_log_q_full_cb_args: *anyopaque = undefined,
+_log_q_full_cb_args: ?*anyopaque = null,
 
 _print_meta_cb: PrintMetaFn = &defaultPrintMeta,
 
@@ -123,7 +123,7 @@ pub const Config = struct {
     is_localtime: bool = false,
     is_block: bool = false,
     log_q_full_cb: LogQFullCBFn = &emptyFn,
-    log_q_full_cb_args: *anyopaque = undefined,
+    log_q_full_cb_args: ?*anyopaque = null,
     print_meta_cb: PrintMetaFn = &defaultPrintMeta,
 };
 

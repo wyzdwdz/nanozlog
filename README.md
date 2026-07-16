@@ -39,13 +39,13 @@ while (i < n) : (i += 1) {
 You can define a callback to execute custom logic when the logging queue is full (e.g., dropping logs, alerting, etc.).
 
 ```zig
-fn onQueueFull(args: *anyopaque) void {
+fn onQueueFull(args: ?*anyopaque) void {
     _ = args;
     std.debug.print("Warning: Log queue is full! Logs might be dropped.\n", .{});
 }
 
 // When initializing nanozlog
-try initNanoZlog(allocator, io, writer, .{ .log_q_full_cb = onQueueFull, .log_q_full_cb_args = undefined });
+try initNanoZlog(allocator, io, writer, .{ .log_q_full_cb = onQueueFull, .log_q_full_cb_args = null });
 ```
 
 ### Custom Print Meta Callback (`print_meta_cb`)
@@ -70,7 +70,7 @@ try initNanoZlog(allocator, io, writer, .{ .print_meta_cb = customPrintMeta });
 
 ### Thread Buffer Management (`initThreadBuffer`, `deinitThreadBuffer`)
 
-Thread-local buffers are managed automatically by default: a buffer is initialized lazily upon the first log call in a thread, and all thread buffers are fully cleaned up when `deinitNanoZlog` is called. 
+Thread-local buffers are managed automatically by default: a buffer is initialized lazily upon the first log call in a thread, and all thread buffers are fully cleaned up when `deinitNanoZlog` is called.
 
 However, you can explicitly manage them for more predictable latency and memory footprint:
 
@@ -81,8 +81,8 @@ However, you can explicitly manage them for more predictable latency and memory 
 fn workerThread() !void {
     // 1. (Optional) Pre-allocate the buffer to avoid latency spikes on the first log
     try nanozlog.initThreadBuffer();
-    
-    // 2. (Optional) Clean up the thread-local buffer when the thread finishes 
+
+    // 2. (Optional) Clean up the thread-local buffer when the thread finishes
     // to prevent memory accumulation in dynamic thread pools
     defer nanozlog.deinitThreadBuffer();
 
@@ -104,7 +104,7 @@ Includes the following fields:
 - `is_localtime`: Whether to format timestamps in local time instead of UTC (defaults to `false`).
 - `is_block`: Whether a logging call should block when the log queue is full (defaults to `false`).
 - `log_q_full_cb`: A custom callback function to be invoked when the log queue is full (defaults to empty function).
-- `log_q_full_cb_args`: An anyopaque pointer used as log_q_full_cb callback function args (defaults to undefined).
+- `log_q_full_cb_args`: An anyopaque pointer used as log_q_full_cb callback function args (defaults to null).
 - `print_meta_cb`: A custom callback function to format and print log metadata. (defaults to builtin function).
 
 ## Limitations

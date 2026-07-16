@@ -525,7 +525,7 @@ test "cached bg node" {
 
 test "queue full" {
     const Closure = struct {
-        fn onQueueFull(args: *anyopaque) void {
+        fn onQueueFull(args: ?*anyopaque) void {
             const count: *usize = @ptrCast(@alignCast(args));
             count.* += 1;
         }
