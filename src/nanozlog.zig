@@ -149,13 +149,13 @@ pub fn init(
 pub fn deinit(self: *NanoZlog) void {
     deinitThreadBuffer();
 
-    self._timezone.deinit();
-
     self._is_polling.store(false, .release);
     if (self._polling_worker) |*worker| {
         _ = worker.await(self._io);
     }
     self._writer.flush() catch {};
+
+    self._timezone.deinit();
 
     for (self._thread_buffers.items) |buffer| {
         buffer.deinit();
