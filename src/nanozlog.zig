@@ -677,9 +677,7 @@ fn allocMsg(self: *NanoZlog, size: u32, q_full_cb: bool) !?*SpscVarQueue.MsgHead
 }
 
 test "deinit active buffer" {
-    var gpa = std.heap.DebugAllocator(.{}){};
-    defer testing.expect(gpa.deinit() == .ok) catch @panic("leak");
-    const allocator = gpa.allocator();
+    const allocator = testing.allocator;
 
     var writer_buffer: [4096]u8 = undefined;
     var discarding = std.Io.Writer.Discarding.init(&writer_buffer);
