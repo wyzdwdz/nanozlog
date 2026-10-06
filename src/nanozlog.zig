@@ -212,7 +212,7 @@ pub fn log(
     comptime format: []const u8,
     args: anytype,
 ) void {
-    if (@intFromEnum(message_level) > @intFromEnum(self._config.min_level)) return;
+    if (@backingInt(message_level) > @backingInt(self._config.min_level)) return;
 
     const Args = @TypeOf(args);
 
@@ -575,7 +575,7 @@ fn defaultPrintMeta(writer: *std.Io.Writer, meta: Meta) std.Io.Writer.Error!void
             meta.microsecond,
             meta.src.file,
             meta.src.line,
-            @tagName(@as(PrintLevel, @enumFromInt(@intFromEnum(meta.level)))),
+            @tagName(@as(PrintLevel, @fromBackingInt(@backingInt(meta.level)))),
             meta.thread_id,
         },
     );
@@ -600,7 +600,7 @@ fn handleLog(
     const meta = Meta{
         .timestamp = timestamp,
         .year = time.year,
-        .month = @intFromEnum(time.month),
+        .month = @backingInt(time.month),
         .day = time.day,
         .hour = time.hour,
         .minute = time.minute,
